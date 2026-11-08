@@ -29,8 +29,8 @@ const t = (en: string, cn: string) => (zh ? cn : en);
     ))}
   </svg>
   <ul
-    class="region-cities"
-    data-region-cities
+    class="region-countries"
+    data-region-countries
     aria-label={t('Top visitor regions', '主要来源地区')}
   ></ul>
   <p class="region-note">
@@ -40,15 +40,14 @@ const t = (en: string, cn: string) => (zh ? cn : en);
 
 <script>
   type Region = { country: string; visits: number };
-  type City = Region & { city: string };
-  type Summary = { countries: Region[]; cities: City[] };
+  type Summary = { countries: Region[] };
 
   async function showRegions(root: HTMLElement) {
     const zh = root.dataset.locale === 'zh';
     const lang = zh ? 'zh-CN' : 'en';
     const endpoint = root.dataset.endpoint;
     const status = root.querySelector<HTMLElement>('[data-region-status]')!;
-    const cities = root.querySelector<HTMLUListElement>('[data-region-cities]')!;
+    const countries = root.querySelector<HTMLUListElement>('[data-region-countries]')!;
     const formatter = new Intl.NumberFormat(lang);
     const names = new Intl.DisplayNames([lang], { type: 'region' });
     const countryName = (country: string) =>
@@ -75,13 +74,14 @@ const t = (en: string, cn: string) => (zh ? cn : en);
         return;
       }
     } else {
-      const sampleCities = [
-        { country: 'CN', city: zh ? '深圳' : 'Shenzhen', visits: 120 },
-        { country: 'US', city: zh ? '西雅图' : 'Seattle', visits: 37 },
-        { country: 'SG', city: zh ? '新加坡' : 'Singapore', visits: 21 },
-        { country: 'GB', city: zh ? '伦敦' : 'London', visits: 12 },
-      ];
-      summary = { countries: sampleCities, cities: sampleCities };
+      summary = {
+        countries: [
+          { country: 'CN', visits: 120 },
+          { country: 'US', visits: 37 },
+          { country: 'SG', visits: 21 },
+          { country: 'GB', visits: 12 },
+        ],
+      };
     }
 
     const counts = new Map(summary.countries.map(({ country, visits }) => [country, visits]));
@@ -98,16 +98,20 @@ const t = (en: string, cn: string) => (zh ? cn : en);
         title.textContent = `${countryName(country)} · ${formatter.format(visits)}`;
     }
 
-    for (const { city, country, visits } of summary.cities) {
+    const topCountries = summary.countries
+      .filter(({ country }) => country)
+      .sort((a, b) => b.visits - a.visits || a.country.localeCompare(b.country))
+      .slice(0, 8);
+    for (const { country, visits } of topCountries) {
       const item = document.createElement('li');
-      item.textContent = `${city ? city + ', ' : ''}${countryName(country)} · ${formatter.format(visits)}`;
-      cities.append(item);
+      item.textContent = `${countryName(country)} · ${formatter.format(visits)}`;
+      countries.append(item);
     }
     const unknown = counts.get('') ?? 0;
     if (unknown) {
       const item = document.createElement('li');
       item.textContent = `${countryName('')} · ${formatter.format(unknown)}`;
-      cities.append(item);
+      countries.append(item);
     }
     const total = formatter.format([...counts.values()].reduce((sum, count) => sum + count, 0));
     const label = zh ? `${total} 次访问` : `${total} pageviews`;
@@ -135,12 +139,12 @@ const t = (en: string, cn: string) => (zh ? cn : en);
     stroke: var(--muted);
   }
   .region-status,
-  .region-cities,
+  .region-countries,
   .region-note {
     color: var(--muted);
     font-size: 13px;
   }
-  .region-cities {
+  .region-countries {
     display: flex;
     flex-wrap: wrap;
     gap: 6px 14px;

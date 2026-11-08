@@ -1,6 +1,6 @@
 # AIMIA visitor regions
 
-D1 stores only country code, city and pageview count. The Worker uses Cloudflare's request geolocation and does not read or store the raw IP. The map shades countries and lists the busiest cities or country-only records. A request without country data goes into the unknown bucket. This counts pageviews, including repeat visits, and uses approximate IP locations.
+D1 stores only country code, city and pageview count. The Worker uses Cloudflare's request geolocation and does not read or store the raw IP. The map shades countries and lists the busiest countries and regions. A request without country data goes into the unknown bucket. This counts pageviews, including repeat visits, and uses approximate IP locations.
 
 The map uses [Natural Earth public-domain country boundaries](https://www.naturalearthdata.com/about/terms-of-use/). The geometry in `src/data/visitor-world.json` is simplified to the 1:110m source and projected to an SVG view box.
 
