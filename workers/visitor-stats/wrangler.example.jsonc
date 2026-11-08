@@ -1,0 +1,10 @@
+{
+  "name": "aimia-visitor-stats",
+  "main": "index.mjs",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": false },
+  "vars": { "SITE_ORIGIN": "https://aimia-pku.github.io" },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "aimia-visitor-stats", "database_id": "YOUR_DATABASE_ID" },
+  ],
+}

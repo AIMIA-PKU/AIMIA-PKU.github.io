@@ -1,0 +1,157 @@
+---
+import world from '../data/visitor-world.json';
+import type { Locale } from '../lib/locale-path';
+
+interface Props {
+  lang: Locale;
+  endpoint?: string;
+}
+const { lang, endpoint } = Astro.props;
+const zh = lang === 'zh';
+const t = (en: string, cn: string) => (zh ? cn : en);
+---
+
+<div class="region-map" data-region-map data-endpoint={endpoint} data-locale={lang}>
+  <p class="region-status" data-region-status>
+    {endpoint
+      ? t('Loading visitor statistics…', '正在读取访客统计…')
+      : t('Preview · sample data', '本地预览 · 示例数据')}
+  </p>
+  <svg
+    viewBox="0 0 720 288"
+    role="img"
+    aria-label={t('Visitor pageviews by country', '各国家和地区的访问次数')}
+  >
+    {world.map(({ country, path }) => (
+      <path d={path} data-country={country} fill-rule="evenodd">
+        <title>{country}</title>
+      </path>
+    ))}
+  </svg>
+  <ul
+    class="region-cities"
+    data-region-cities
+    aria-label={t('Top visitor regions', '主要来源地区')}
+  ></ul>
+  <p class="region-note">
+    {t('Approximate IP location · pageviews', 'IP 大致归属地 · 按访问次数统计')}
+  </p>
+</div>
+
+<script>
+  type Region = { country: string; visits: number };
+  type City = Region & { city: string };
+  type Summary = { countries: Region[]; cities: City[] };
+
+  async function showRegions(root: HTMLElement) {
+    const zh = root.dataset.locale === 'zh';
+    const lang = zh ? 'zh-CN' : 'en';
+    const endpoint = root.dataset.endpoint;
+    const status = root.querySelector<HTMLElement>('[data-region-status]')!;
+    const cities = root.querySelector<HTMLUListElement>('[data-region-cities]')!;
+    const formatter = new Intl.NumberFormat(lang);
+    const names = new Intl.DisplayNames([lang], { type: 'region' });
+    const countryName = (country: string) =>
+      /^[A-Z]{2}$/.test(country)
+        ? (names.of(country) ?? country)
+        : zh
+          ? '未知地区'
+          : 'Unknown region';
+
+    let summary: Summary;
+    if (endpoint) {
+      try {
+        // Count the pageview independently so a failed write cannot hide the public map.
+        void fetch(new URL('/visit', endpoint), { method: 'POST', keepalive: true }).catch(
+          () => {},
+        );
+        const response = await fetch(new URL('/summary', endpoint), {
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!response.ok) throw new Error('Statistics unavailable');
+        summary = await response.json();
+      } catch {
+        status.textContent = zh ? '访客统计暂不可用' : 'Visitor statistics unavailable';
+        return;
+      }
+    } else {
+      const sampleCities = [
+        { country: 'CN', city: zh ? '深圳' : 'Shenzhen', visits: 120 },
+        { country: 'US', city: zh ? '西雅图' : 'Seattle', visits: 37 },
+        { country: 'SG', city: zh ? '新加坡' : 'Singapore', visits: 21 },
+        { country: 'GB', city: zh ? '伦敦' : 'London', visits: 12 },
+      ];
+      summary = { countries: sampleCities, cities: sampleCities };
+    }
+
+    const counts = new Map(summary.countries.map(({ country, visits }) => [country, visits]));
+    const peak = Math.max(1, ...counts.values());
+    for (const shape of root.querySelectorAll<SVGPathElement>('[data-country]')) {
+      const country = shape.dataset.country ?? '';
+      const visits = country ? (counts.get(country) ?? 0) : 0;
+      if (visits) {
+        shape.style.fill = 'var(--red)';
+        shape.style.fillOpacity = String(0.25 + 0.75 * Math.sqrt(visits / peak));
+      }
+      const title = shape.querySelector('title');
+      if (title && country)
+        title.textContent = `${countryName(country)} · ${formatter.format(visits)}`;
+    }
+
+    for (const { city, country, visits } of summary.cities) {
+      const item = document.createElement('li');
+      item.textContent = `${city ? city + ', ' : ''}${countryName(country)} · ${formatter.format(visits)}`;
+      cities.append(item);
+    }
+    const unknown = counts.get('') ?? 0;
+    if (unknown) {
+      const item = document.createElement('li');
+      item.textContent = `${countryName('')} · ${formatter.format(unknown)}`;
+      cities.append(item);
+    }
+    const total = formatter.format([...counts.values()].reduce((sum, count) => sum + count, 0));
+    const label = zh ? `${total} 次访问` : `${total} pageviews`;
+    status.textContent = endpoint ? label : `${status.textContent?.trim()} · ${label}`;
+  }
+
+  document
+    .querySelectorAll<HTMLElement>('[data-region-map]')
+    .forEach((root) => void showRegions(root));
+</script>
+
+<style>
+  .region-map svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-block: 6px;
+  }
+  .region-map path {
+    fill: var(--line);
+    stroke: var(--bg);
+    stroke-width: 0.45;
+  }
+  .region-map path:hover {
+    stroke: var(--muted);
+  }
+  .region-status,
+  .region-cities,
+  .region-note {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .region-cities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .region-note {
+    border-top: 1px solid var(--line);
+    margin-top: 10px;
+    padding-top: 8px;
+    font-size: 12px;
+  }
+</style>

@@ -42,6 +42,8 @@ jobs:
       - name: Test Scholar parsing and retention rules
         run: pnpm test:scholar
       - name: Validate content, build and check links
+        env:
+          PUBLIC_VISITOR_STATS_URL: ${{ vars.PUBLIC_VISITOR_STATS_URL }}
         run: pnpm build
       - name: Upload website for publication
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && github.ref == 'refs/heads/main' && github.repository == 'AIMIA-PKU/AIMIA-PKU.github.io'
