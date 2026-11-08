@@ -114,65 +114,62 @@ function graph(points: { date: string; label: string; value: number }[]) {
               </>
             )}
           </p>
-          <div class="impact-chart-heading">
-            <h4 id={`impact-${card.id}-${lang}`}>{card.chartLabel}</h4>
-            <output data-impact-value>
-              {last ? `${last.label} · ${number(last.value)}` : t('No history yet', '暂无历史数据')}
+          <div class="impact-chart-stage">
+            <svg class="impact-chart" viewBox="0 0 600 190" role="img" aria-label={card.chartLabel}>
+              <desc>
+                {card.id === 'citations'
+                  ? t(
+                      'Cumulative sum of the currently visible annual citation counts, not historical snapshots of the profile total. ',
+                      '按当前可见年度引用量累加，不是历年保存的总引用快照。',
+                    )
+                  : ''}
+                {card.points.map((p) => `${p.label}: ${p.value}`).join('; ')}
+              </desc>
+              {chart.ticks.map((value, i) => (
+                <g>
+                  <line
+                    class="impact-gridline"
+                    x1="52"
+                    y1={150 - i * 63}
+                    x2="572"
+                    y2={150 - i * 63}
+                  />
+                  <text x="40" y={154 - i * 63} text-anchor="end">
+                    {number(value)}
+                  </text>
+                </g>
+              ))}
+              <g class="impact-trace">
+                <path
+                  class="impact-area"
+                  d={chart.path ? `${chart.path} L572,150 L52,150 Z` : ''}
+                />
+                <path class="impact-line" d={chart.path} pathLength="1" />
+              </g>
+              {last && (
+                <g data-impact-marker>
+                  <line class="impact-crosshair" x1={last.x} x2={last.x} y1="24" y2="150" />
+                  <circle cx={last.x} cy={last.y} r="4" />
+                </g>
+              )}
+              {[0, Math.floor((chart.plotted.length - 1) / 2), chart.plotted.length - 1]
+                .filter((v, i, a) => v >= 0 && a.indexOf(v) === i)
+                .map((i) => (
+                  <text
+                    x={chart.plotted[i].x}
+                    y="177"
+                    text-anchor={
+                      i === 0 ? 'start' : i === chart.plotted.length - 1 ? 'end' : 'middle'
+                    }
+                  >
+                    {card.id === 'stars' ? card.points[i].label.slice(0, 7) : card.points[i].label}
+                  </text>
+                ))}
+            </svg>
+            <output class="impact-point-value" data-impact-value>
+              {last && `${last.label} · ${number(last.value)}`}
             </output>
           </div>
-          <svg
-            class="impact-chart"
-            viewBox="0 0 600 190"
-            role="img"
-            aria-labelledby={`impact-${card.id}-${lang}`}
-          >
-            <desc>
-              {card.id === 'citations'
-                ? t(
-                    'Cumulative sum of the currently visible annual citation counts, not historical snapshots of the profile total. ',
-                    '按当前可见年度引用量累加，不是历年保存的总引用快照。',
-                  )
-                : ''}
-              {card.points.map((p) => `${p.label}: ${p.value}`).join('; ')}
-            </desc>
-            {chart.ticks.map((value, i) => (
-              <g>
-                <line
-                  class="impact-gridline"
-                  x1="52"
-                  y1={150 - i * 63}
-                  x2="572"
-                  y2={150 - i * 63}
-                />
-                <text x="40" y={154 - i * 63} text-anchor="end">
-                  {number(value)}
-                </text>
-              </g>
-            ))}
-            <g class="impact-trace">
-              <path class="impact-area" d={chart.path ? `${chart.path} L572,150 L52,150 Z` : ''} />
-              <path class="impact-line" d={chart.path} pathLength="1" />
-            </g>
-            {last && (
-              <g data-impact-marker>
-                <line class="impact-crosshair" x1={last.x} x2={last.x} y1="24" y2="150" />
-                <circle cx={last.x} cy={last.y} r="4" />
-              </g>
-            )}
-            {[0, Math.floor((chart.plotted.length - 1) / 2), chart.plotted.length - 1]
-              .filter((v, i, a) => v >= 0 && a.indexOf(v) === i)
-              .map((i) => (
-                <text
-                  x={chart.plotted[i].x}
-                  y="177"
-                  text-anchor={
-                    i === 0 ? 'start' : i === chart.plotted.length - 1 ? 'end' : 'middle'
-                  }
-                >
-                  {card.id === 'stars' ? card.points[i].label.slice(0, 7) : card.points[i].label}
-                </text>
-              ))}
-          </svg>
           <input
             class="impact-slider"
             type="range"
@@ -240,10 +237,23 @@ function graph(points: { date: string; label: string; value: number }[]) {
       });
       select(nearest);
     }
+    function showPoint(event: PointerEvent) {
+      if (!points.length) return;
+      pointAt(event);
+      root.setAttribute('data-point-active', '');
+    }
+    function hidePoint() {
+      root.removeAttribute('data-point-active');
+    }
     svg.addEventListener('pointermove', (event) => {
-      if (event.pointerType === 'mouse' || event.buttons === 1) pointAt(event);
+      if (event.pointerType === 'mouse' || event.buttons === 1) showPoint(event);
     });
-    svg.addEventListener('pointerdown', pointAt);
+    svg.addEventListener('pointerdown', showPoint);
+    svg.addEventListener('pointerleave', hidePoint);
+    svg.addEventListener('pointercancel', hidePoint);
+    svg.addEventListener('pointerup', (event) => {
+      if (event.pointerType !== 'mouse') hidePoint();
+    });
     slider.addEventListener('input', () => select(Number(slider.value)));
   });
 </script>
@@ -340,22 +350,24 @@ function graph(points: { date: string; label: string; value: number }[]) {
     color: var(--muted);
     margin-top: 5px;
   }
-  .impact-chart-heading {
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 16px;
+  .impact-chart-stage {
+    position: relative;
   }
-  .impact-chart-heading h4 {
-    font-size: 14px;
-    font-weight: 500;
-  }
-  .impact-chart-heading output {
-    font-family: var(--mono);
-    font-size: 13px;
+  .impact-point-value {
+    visibility: hidden;
+    position: absolute;
+    inset: 0 4px auto auto;
+    pointer-events: none;
+    padding: 2px 6px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font: 13px var(--mono);
     color: var(--chart-color);
-    font-variant-numeric: tabular-nums;
+  }
+  [data-point-active] .impact-point-value,
+  .impact-card:has(.impact-slider:is(:active, :focus-visible)) .impact-point-value {
+    visibility: visible;
   }
   .impact-chart {
     display: block;
@@ -458,9 +470,6 @@ function graph(points: { date: string; label: string; value: number }[]) {
     .impact-compact .impact-scope {
       margin-top: 3px;
       font-size: 14px;
-    }
-    .impact-compact .impact-chart-heading {
-      margin-top: 10px;
     }
     .impact-compact .impact-slider {
       min-height: 24px;
