@@ -22,22 +22,6 @@ const citationPoints = scholar.annual.map((p) => {
 });
 const cards = [
   {
-    id: 'stars',
-    title: t('Open-source adoption', '开源关注'),
-    metric: number(github.totalStars),
-    unit: t('GitHub Stars', 'GitHub Stars'),
-    subtitle: t(
-      `${github.repositories.length + 1} public repositories`,
-      `${github.repositories.length + 1} 个公开仓库`,
-    ),
-    source: github.source,
-    sourceLabel: 'GitHub',
-    updated: github.updatedAt,
-    color: 'sage',
-    points: github.series.map((p) => ({ date: p.date, label: p.date, value: p.value })),
-    chartLabel: t('Cumulative star events · weekly', '累计获 Star · 按周统计'),
-  },
-  {
     id: 'citations',
     title: t('Academic citations', '学术引用'),
     metric: number(scholar.total),
@@ -52,6 +36,22 @@ const cards = [
       `Cumulative citations · since ${scholar.annual[0].year}`,
       `累计引用次数 · ${scholar.annual[0].year} 起`,
     ),
+  },
+  {
+    id: 'stars',
+    title: t('Open-source adoption', '开源关注'),
+    metric: number(github.totalStars),
+    unit: t('GitHub Stars', 'GitHub Stars'),
+    subtitle: t(
+      `${github.repositories.length + 1} public repositories`,
+      `${github.repositories.length + 1} 个公开仓库`,
+    ),
+    source: github.source,
+    sourceLabel: 'GitHub',
+    updated: github.updatedAt,
+    color: 'sage',
+    points: github.series.map((p) => ({ date: p.date, label: p.date, value: p.value })),
+    chartLabel: t('Cumulative star events · weekly', '累计获 Star · 按周统计'),
   },
 ];
 function graph(points: { date: string; label: string; value: number }[]) {
